@@ -1180,7 +1180,7 @@
       if (verificationTimeLeft <= 0) {
         clearInterval(verificationTimer);
         clearInterval(verificationCheckInterval);
-        autoCheckIndicator.style.display = 'none';
+        if (autoCheckIndicator) autoCheckIndicator.style.display = 'none';
         
         // إظهار رسالة انتهاء الوقت
         verificationBox.innerHTML = `
@@ -1310,6 +1310,11 @@
               });
               
               disableAllButtons(false);
+              
+              // ✅ تسجيل الدخول التلقائي بعد التحقق
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
             }
           })
           .catch(err => {
@@ -1327,7 +1332,7 @@
           clearInterval(verificationCheckInterval);
           clearInterval(verificationTimer);
           verificationBox.classList.remove('show');
-          alert('✅ تم التحقق من بريدك الإلكتروني بنجاح!');
+          alert('✅ تم التحقق من بريدك الإلكتروني بنجاح! سيتم تسجيل الدخول تلقائياً...');
           
           db.collection('users').doc(auth.currentUser.uid).update({
             emailVerified: true,
@@ -1335,6 +1340,11 @@
           });
           
           disableAllButtons(false);
+          
+          // ✅ تسجيل الدخول التلقائي بعد التحقق اليدوي
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
         } else {
           alert('❌ لم يتم التحقق من البريد بعد. الرجاء التحقق من بريدك الإلكتروني ثم الضغط مرة أخرى.');
         }
@@ -1581,25 +1591,10 @@
     forgotPasswordMessage.style.display = 'none';
     
     try {
-      // ✅ أولاً: التحقق من وجود المستخدم عن طريق محاولة تسجيل الدخول (بدون كلمة مرور)
-      // هذا للتحقق من وجود البريد الإلكتروني في النظام
-      const methods = await auth.fetchSignInMethodsForEmail(emailVal);
-      
-      if (methods.length === 0) {
-        // لا يوجد مستخدم بهذا البريد
-        forgotPasswordMessage.className = 'forgot-password-message error';
-        forgotPasswordMessage.innerHTML = '❌ لا يوجد حساب مسجل بهذا البريد الإلكتروني';
-        forgotPasswordMessage.style.display = 'block';
-        sendResetBtn.disabled = false;
-        resetLoading.style.display = 'none';
-        return;
-      }
-      
-      // ✅ إرسال رابط إعادة التعيين
       console.log('جاري إرسال رابط إعادة التعيين إلى:', emailVal);
       
+      // ✅ إرسال رابط إعادة التعيين مباشرة - Firebase سيتحقق من وجود المستخدم تلقائياً
       await auth.sendPasswordResetEmail(emailVal, {
-        // يمكن إضافة URL مخصص إذا أردت
         url: window.location.origin,
         handleCodeInApp: false
       });
@@ -1628,7 +1623,7 @@
       // التعامل مع أخطاء Firebase بشكل أفضل
       switch (error.code) {
         case 'auth/user-not-found':
-          errorMessage = '❌ لا يوجد حساب بهذا البريد الإلكتروني';
+          errorMessage = '❌ هذا البريد الإلكتروني غير مسجل في النظام. الرجاء التأكد من البريد أو إنشاء حساب جديد';
           break;
         case 'auth/invalid-email':
           errorMessage = '❌ البريد الإلكتروني غير صالح';
