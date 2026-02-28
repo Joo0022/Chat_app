@@ -991,7 +991,7 @@
         <div class="auto-check-indicator" id="autoCheckIndicator">⏳ جاري التحقق التلقائي...</div>
         <button onclick="checkEmailVerification()" id="manualCheckBtn">✅ تحقق يدوياً</button>
         <button class="resend-btn" onclick="resendVerification()" id="resendBtn">🔄 إعادة إرسال الرابط</button>
-        <button onclick="cancelVerification()" style="background:#e74c3c; color:white; margin-top:5px;">✗ إلغاء وإعادة تسجيل الدخول</button>
+        <button onclick="cancelVerification()" style="background:#e74c3c; color:white; margin-top:5px;">✗ إلغاء العملية ومسح البيانات</button>
       </div>
       
       <button onclick="register()" id="registerBtn">تسجيل جديد</button>
@@ -1162,8 +1162,87 @@
   // ✅ متغير لتخزين حالة ما إذا كنا في وضع التحقق
   let isVerificationMode = false;
   
+  // ✅ متغيرات لتخزين البيانات في localStorage
+  const STORAGE_KEYS = {
+    USERNAME: 'chat_username',
+    EMAIL: 'chat_email',
+    PASSWORD: 'chat_password',
+    VERIFICATION_TIME: 'chat_verification_time',
+    VERIFICATION_START: 'chat_verification_start'
+  };
+  
   // ✅ ألوان مختلفة للمستخدمين
   const userColors = {};
+
+  // ===== دوال حفظ واسترجاع البيانات من localStorage =====
+  function saveAuthData() {
+    if (!isVerificationMode) return; // نحفظ فقط في وضع التحقق
+    
+    try {
+      localStorage.setItem(STORAGE_KEYS.USERNAME, username.value);
+      localStorage.setItem(STORAGE_KEYS.EMAIL, email.value);
+      localStorage.setItem(STORAGE_KEYS.PASSWORD, password.value);
+      
+      // حفظ وقت بدء التحقق والوقت المتبقي
+      const startTime = Date.now();
+      localStorage.setItem(STORAGE_KEYS.VERIFICATION_START, startTime.toString());
+      localStorage.setItem(STORAGE_KEYS.VERIFICATION_TIME, verificationTimeLeft.toString());
+      
+      console.log('✅ تم حفظ بيانات التحقق في localStorage');
+    } catch (e) {
+      console.error('خطأ في حفظ البيانات:', e);
+    }
+  }
+  
+  function loadAuthData() {
+    try {
+      const savedUsername = localStorage.getItem(STORAGE_KEYS.USERNAME);
+      const savedEmail = localStorage.getItem(STORAGE_KEYS.EMAIL);
+      const savedPassword = localStorage.getItem(STORAGE_KEYS.PASSWORD);
+      const savedStartTime = localStorage.getItem(STORAGE_KEYS.VERIFICATION_START);
+      const savedTimeLeft = localStorage.getItem(STORAGE_KEYS.VERIFICATION_TIME);
+      
+      if (savedUsername && savedEmail && savedPassword && savedStartTime && savedTimeLeft) {
+        // حساب الوقت المنقضي
+        const startTime = parseInt(savedStartTime);
+        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        const remainingTime = parseInt(savedTimeLeft) - elapsedSeconds;
+        
+        if (remainingTime > 0) {
+          // استعادة البيانات
+          username.value = savedUsername;
+          email.value = savedEmail;
+          password.value = savedPassword;
+          verificationTimeLeft = remainingTime;
+          
+          // التحقق من صحة البريد
+          validateEmail();
+          
+          console.log('✅ تم استعادة بيانات التحقق من localStorage', { remainingTime });
+          return true;
+        } else {
+          console.log('⏰ انتهت صلاحية بيانات التحقق');
+          clearAuthData();
+        }
+      }
+    } catch (e) {
+      console.error('خطأ في استعادة البيانات:', e);
+    }
+    return false;
+  }
+  
+  function clearAuthData() {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.USERNAME);
+      localStorage.removeItem(STORAGE_KEYS.EMAIL);
+      localStorage.removeItem(STORAGE_KEYS.PASSWORD);
+      localStorage.removeItem(STORAGE_KEYS.VERIFICATION_TIME);
+      localStorage.removeItem(STORAGE_KEYS.VERIFICATION_START);
+      console.log('✅ تم مسح بيانات التحقق من localStorage');
+    } catch (e) {
+      console.error('خطأ في مسح البيانات:', e);
+    }
+  }
 
   // ===== دوال تعطيل/تفعيل الأزرار =====
   function disableAllButtons(disable = true) {
@@ -1224,18 +1303,21 @@
     }
   };
 
-  // ===== دالة تفريغ الحقول =====
+  // ===== دالة تفريغ الحقول ومسح localStorage =====
   function clearAuthFields() {
     username.value = '';
     email.value = '';
     password.value = '';
     email.classList.remove('valid', 'error');
     emailValidation.style.display = 'none';
+    clearAuthData(); // مسح البيانات من localStorage
   }
 
   // ===== بدء مؤقت التحقق =====
   function startVerificationTimer() {
-    verificationTimeLeft = 300; // 5 دقائق
+    if (verificationTimeLeft <= 0) {
+      verificationTimeLeft = 300; // 5 دقائق
+    }
     updateTimerDisplay();
     
     if (verificationTimer) {
@@ -1245,6 +1327,7 @@
     verificationTimer = setInterval(() => {
       verificationTimeLeft--;
       updateTimerDisplay();
+      saveAuthData(); // حفظ البيانات كل ثانية
       
       if (verificationTimeLeft <= 0) {
         clearInterval(verificationTimer);
@@ -1257,6 +1340,9 @@
           <p style="font-size:0.9rem; opacity:0.8;">الرجاء إعادة تسجيل الدخول والمحاولة مرة أخرى</p>
           <button onclick="handleVerificationTimeout()" style="background:#3498db; color:white; margin-top:10px;">🔄 إعادة تسجيل الدخول</button>
         `;
+        
+        // مسح البيانات عند انتهاء الوقت
+        clearAuthData();
         
         // تسجيل الخروج التلقائي
         if (auth.currentUser) {
@@ -1301,7 +1387,7 @@
       <div class="auto-check-indicator" id="autoCheckIndicator">⏳ جاري التحقق التلقائي...</div>
       <button onclick="checkEmailVerification()" id="manualCheckBtn">✅ تحقق يدوياً</button>
       <button class="resend-btn" onclick="resendVerification()" id="resendBtn">🔄 إعادة إرسال الرابط</button>
-      <button onclick="cancelVerification()" style="background:#e74c3c; color:white; margin-top:5px;">✗ إلغاء وإعادة تسجيل الدخول</button>
+      <button onclick="cancelVerification()" style="background:#e74c3c; color:white; margin-top:5px;">✗ إلغاء العملية ومسح البيانات</button>
     `;
     
     // إعادة تعيين المؤقت
@@ -1324,7 +1410,7 @@
     verificationBox.classList.remove('show');
     isVerificationMode = false;
     
-    // تفريغ الحقول فقط عند الضغط على زر الإلغاء
+    // تفريغ الحقول ومسح localStorage عند الضغط على زر الإلغاء
     clearAuthFields();
     
     if (auth.currentUser) {
@@ -1341,10 +1427,15 @@
         .then(() => {
           console.log('✅ تم إرسال بريد التحقق');
           verificationBox.classList.add('show');
+          isVerificationMode = true;
+          
+          // حفظ البيانات في localStorage
+          saveAuthData();
+          
           startVerificationTimer();
           startAutoVerificationCheck();
           disableAllButtons(true);
-          isVerificationMode = true;
+          
           // تفعيل أزرار التحقق فقط
           if (manualCheckBtn) manualCheckBtn.disabled = false;
           if (resendBtn) resendBtn.disabled = false;
@@ -1380,6 +1471,9 @@
               verificationBox.classList.remove('show');
               isVerificationMode = false;
               
+              // مسح البيانات من localStorage بعد التحقق الناجح
+              clearAuthData();
+              
               db.collection('users').doc(auth.currentUser.uid).update({
                 emailVerified: true,
                 online: true
@@ -1410,6 +1504,9 @@
           verificationBox.classList.remove('show');
           isVerificationMode = false;
           alert('✅ تم التحقق من بريدك الإلكتروني بنجاح! سيتم تسجيل الدخول تلقائياً...');
+          
+          // مسح البيانات من localStorage بعد التحقق الناجح
+          clearAuthData();
           
           db.collection('users').doc(auth.currentUser.uid).update({
             emailVerified: true,
@@ -1520,11 +1617,15 @@
       .then(result => {
         if (!result.user.emailVerified) {
           verificationBox.classList.add('show');
+          isVerificationMode = true;
+          
+          // حفظ البيانات في localStorage
+          saveAuthData();
+          
           startVerificationTimer();
           startAutoVerificationCheck();
           alert('⚠️ لم يتم تفعيل بريدك الإلكتروني بعد. لديك 5 دقائق للتحقق.');
           disableAllButtons(true);
-          isVerificationMode = true;
           if (manualCheckBtn) manualCheckBtn.disabled = false;
           if (resendBtn) resendBtn.disabled = false;
           auth.signOut();
@@ -1594,6 +1695,9 @@
           }
           disableAllButtons(false);
           isVerificationMode = false;
+          
+          // مسح البيانات عند تسجيل الخروج
+          clearAuthData();
         });
     }
   }
@@ -1829,11 +1933,24 @@
           disableAllButtons(false);
           
         } else {
-          // إذا كان المستخدم غير مفعل، نعرض صفحة الدخول مع الحقول كما هي
-          // ولا نفرغها أبداً
+          // إذا كان المستخدم غير مفعل، نعرض صفحة الدخول
           authDiv.style.display = 'flex';
           disableAllButtons(false);
-          isVerificationMode = false;
+          
+          // محاولة استعادة البيانات المحفوظة
+          if (!isVerificationMode) {
+            const hasSavedData = loadAuthData();
+            if (hasSavedData) {
+              // إذا وجدنا بيانات محفوظة، نبدأ وضع التحقق
+              isVerificationMode = true;
+              verificationBox.classList.add('show');
+              startVerificationTimer();
+              startAutoVerificationCheck();
+              disableAllButtons(true);
+              if (manualCheckBtn) manualCheckBtn.disabled = false;
+              if (resendBtn) resendBtn.disabled = false;
+            }
+          }
         }
       } else {
         authDiv.style.display = 'flex';
