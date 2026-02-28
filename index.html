@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <title>دردشة متكاملة • مع رفع الصور</title>
+  <title>Chat_With_Us 💬</title>
+  <link rel="icon" type="image/png" href="https://i.postimg.cc/XvjGnHCY/whatsapp_xxl.png">
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -1409,7 +1410,7 @@
     
     const publicUploadBtn = document.createElement('button');
     publicUploadBtn.className = 'image-upload-btn';
-    publicUploadBtn.innerHTML = '📷';
+    publicUploadBtn.innerHTML = '📤';
     publicUploadBtn.type = 'button';
     publicUploadBtn.onclick = () => {
       currentImageMessageContext = 'public';
@@ -1424,7 +1425,7 @@
       
       const privateUploadBtn = document.createElement('button');
       privateUploadBtn.className = 'image-upload-btn';
-      privateUploadBtn.innerHTML = '📷';
+      privateUploadBtn.innerHTML = '📤';
       privateUploadBtn.type = 'button';
       privateUploadBtn.onclick = () => {
         if (!activePartner) {
