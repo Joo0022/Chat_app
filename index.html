@@ -581,6 +581,44 @@
       background: rgba(46, 204, 113, 0.1);
     }
     
+    /* حقل كلمة السر مع العين */
+    .password-container {
+      position: relative;
+      width: 100%;
+      margin: 8px 0;
+    }
+    
+    .password-container input {
+      width: 100%;
+      padding: 15px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      margin: 0;
+    }
+    
+    .password-toggle {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: white;
+      cursor: pointer;
+      font-size: 1.2rem;
+      user-select: none;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+      background: transparent;
+      border: none;
+      padding: 5px;
+      width: auto;
+    }
+    
+    .password-toggle:hover {
+      opacity: 1;
+    }
+    
     #auth button {
       width: 100%;
       padding: 15px;
@@ -934,7 +972,12 @@
       <input id="username" placeholder="اسم المستخدم">
       <input id="email" placeholder="البريد الإلكتروني" oninput="validateEmail()">
       <div id="emailValidation" class="validation-message"></div>
-      <input id="password" type="password" placeholder="كلمة المرور">
+      
+      <!-- حقل كلمة السر مع عين الإظهار/الإخفاء -->
+      <div class="password-container">
+        <input id="password" type="password" placeholder="كلمة المرور">
+        <span class="password-toggle" onclick="togglePasswordVisibility()" id="passwordToggle">👁️</span>
+      </div>
       
       <div id="verificationBox" class="verification-box">
         <p>📧 تم إرسال رابط التحقق إلى بريدك الإلكتروني</p>
@@ -1163,6 +1206,20 @@
       btn.disabled = disable;
     });
   }
+
+  // ===== دالة إظهار/إخفاء كلمة السر =====
+  window.togglePasswordVisibility = function() {
+    const passwordField = document.getElementById('password');
+    const toggleIcon = document.getElementById('passwordToggle');
+    
+    if (passwordField.type === 'password') {
+      passwordField.type = 'text';
+      toggleIcon.textContent = '🔒';
+    } else {
+      passwordField.type = 'password';
+      toggleIcon.textContent = '👁️';
+    }
+  };
 
   // ===== بدء مؤقت التحقق =====
   function startVerificationTimer() {
@@ -1408,9 +1465,7 @@
       })
       .then(() => {
         alert('✅ تم التسجيل بنجاح! تم إرسال رابط التحقق إلى بريدك الإلكتروني.');
-        email.value = '';
-        password.value = '';
-        username.value = '';
+        // لا نقوم بتفريغ الحقول هنا حتى تبقى كما هي
       })
       .catch(err => {
         disableAllButtons(false);
