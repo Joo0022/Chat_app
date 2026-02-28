@@ -10,6 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
+    /* ... أنماطك السابقة تبقى كما هي ... */
     * {
       box-sizing: border-box;
       font-family: 'Segoe UI', Tahoma, sans-serif;
@@ -287,7 +288,7 @@
       margin-top: 5px;
     }
     
-    /* ===== إضافة رفع الصور - الأنماط ===== */
+    /* أنماط رفع الصور */
     .image-upload-container {
       position: relative;
       display: inline-block;
@@ -503,11 +504,11 @@
     }
     
     #auth {
-      display: flex;
+      display: none; /* مخفية افتراضياً، سيتم التحكم بها عبر JS */
     }
     
     #chat {
-      display: none;
+      display: none; /* مخفية افتراضياً */
     }
     
     #auth input {
@@ -651,9 +652,51 @@
       50% { opacity: 0.5; }
       100% { opacity: 1; }
     }
+
+    /* ===== أنماط مؤشر التحميل الجديدة ===== */
+    .loader-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(145deg, #0b1f3a, #1e4b6e);
+      z-index: 10000;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .loader-container.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+    .loader {
+      width: 60px;
+      height: 60px;
+      border: 6px solid rgba(255,255,255,0.2);
+      border-top: 6px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    .loader-text {
+      color: white;
+      margin-top: 20px;
+      font-size: 1.2rem;
+      font-weight: 500;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
+<!-- ===== مؤشر التحميل الجديد ===== -->
+<div class="loader-container" id="loader">
+  <div style="display: flex; flex-direction: column; align-items: center;">
+    <div class="loader"></div>
+    <div class="loader-text">جاري التحميل...</div>
+  </div>
+</div>
+
 <div class="container">
   <!-- صفحة التسجيل -->
   <div class="card" id="auth">
@@ -730,8 +773,7 @@
   </div>
 </div>
 
-<!-- ===== إضافة رفع الصور - العناصر ===== -->
-<!-- معاينة الصورة قبل الإرسال -->
+<!-- عناصر رفع الصور -->
 <div class="image-preview-container" id="imagePreviewContainer">
   <img id="imagePreview" class="image-preview" src="" alt="معاينة الصورة">
   <div class="preview-actions">
@@ -740,13 +782,11 @@
   </div>
 </div>
 
-<!-- مؤشر رفع الصورة -->
 <div class="upload-progress" id="uploadProgress">
   <div>جاري رفع الصورة...</div>
   <div class="spinner"></div>
 </div>
 
-<!-- نافذة عرض الصورة بالكامل -->
 <div class="full-image-modal" id="fullImageModal" onclick="this.classList.remove('show')">
   <button class="close-modal" onclick="document.getElementById('fullImageModal').classList.remove('show')">✕</button>
   <img id="fullImage" src="" alt="">
@@ -769,11 +809,14 @@
   // ✅ تفعيل Google Sign-In
   const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-  // ✅ إعدادات Cloudinary - ضع القيم الخاصة بك هنا
-  const CLOUD_NAME = "dn0knjzpi"; // ضع اسم cloud الخاص بك
-  const UPLOAD_PRESET = "chat-app"; // ضع اسم upload preset
+  // ✅ إعدادات Cloudinary
+  const CLOUD_NAME = "dn0knjzpi";
+  const UPLOAD_PRESET = "chat-app";
 
   // ✅ العناصر
+  const loader = document.getElementById('loader');
+  const authDiv = document.getElementById('auth');
+  const chatDiv = document.getElementById('chat');
   const email = document.getElementById('email');
   const password = document.getElementById('password');
   const username = document.getElementById('username');
@@ -785,7 +828,6 @@
   const verificationBox = document.getElementById('verificationBox');
   const autoCheckIndicator = document.getElementById('autoCheckIndicator');
   
-  // ✅ عناصر المحادثة الخاصة
   const privatePage = document.getElementById('privatePage');
   const privateMessages = document.getElementById('privateMessages');
   const privateInput = document.getElementById('privateInput');
@@ -795,7 +837,7 @@
   // ✅ متغيرات رفع الصور
   let selectedImageFile = null;
   let imagePreviewUrl = null;
-  let currentImageMessageContext = null; // 'public' أو 'private'
+  let currentImageMessageContext = null;
   
   // ✅ متغيرات الحالة
   let currentUser = null;
@@ -883,9 +925,8 @@
                 emailVerified: true,
                 online: true
               }).then(() => {
-                setTimeout(() => {
-                  window.location.reload();
-                }, 1000);
+                // بعد التحقق، سيتم تحديث حالة المصادقة تلقائياً وإعادة التوجيه
+                // لا حاجة لإعادة التحميل، onAuthStateChanged سيتولى ذلك
               });
             }
           })
@@ -909,7 +950,7 @@
             emailVerified: true,
             online: true
           }).then(() => {
-            window.location.reload();
+            // onAuthStateChanged سيتولى الباقي
           });
         } else {
           alert('❌ لم يتم التحقق من البريد بعد. الرجاء التحقق من بريدك الإلكتروني ثم الضغط مرة أخرى.');
@@ -999,12 +1040,9 @@
           verificationBox.classList.add('show');
           startAutoVerificationCheck();
           alert('⚠️ لم يتم تفعيل بريدك الإلكتروني بعد. جاري التحقق التلقائي...');
-          auth.signOut();
+          auth.signOut(); // تسجيل الخروج حتى يتم التحقق
         } else {
-          db.collection('users').doc(result.user.uid).update({
-            online: true,
-            emailVerified: true
-          });
+          // المستخدم مُفعّل، سيتم تحديث onAuthStateChanged
         }
       })
       .catch(err => {
@@ -1030,7 +1068,7 @@
           online: true,
           emailVerified: true,
           lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        }, { merge: true }); // استخدام merge لتجنب الكتابة فوق البيانات
       })
       .catch(err => {
         alert('❌ خطأ في تسجيل الدخول بحساب Google: ' + err.message);
@@ -1071,25 +1109,33 @@
     return userColors[uid];
   }
 
-  // ===== مراقبة حالة المصادقة =====
-  auth.onAuthStateChanged(user => {
-    if (user && user.emailVerified) {
-      document.getElementById('auth').style.display = 'none';
-      document.getElementById('chat').style.display = 'flex';
-      currentUser = user;
-      verificationBox.classList.remove('show');
-      
-      if (verificationCheckInterval) {
-        clearInterval(verificationCheckInterval);
-      }
-
-      db.collection('users').doc(user.uid).get()
-        .then(doc => {
-          if (doc.exists) {
-            currentUsername = doc.data().username;
+  // ===== مراقبة حالة المصادقة مع مؤشر التحميل =====
+  auth.onAuthStateChanged(async (user) => {
+    console.log('onAuthStateChanged', user?.email, user?.emailVerified);
+    
+    // إخفاء جميع الشاشات الرئيسية أولاً
+    authDiv.style.display = 'none';
+    chatDiv.style.display = 'none';
+    privatePage.classList.remove('show');
+    verificationBox.classList.remove('show');
+    
+    // دائماً نظهر مؤشر التحميل في البداية
+    loader.classList.remove('hidden');
+    
+    try {
+      if (user) {
+        // يوجد مستخدم مسجل الدخول
+        if (user.emailVerified) {
+          // بريده مُفعّل
+          currentUser = user;
+          
+          // جلب أو إنشاء بيانات المستخدم
+          const userDoc = await db.collection('users').doc(user.uid).get();
+          if (userDoc.exists) {
+            currentUsername = userDoc.data().username;
           } else {
             currentUsername = user.email.split('@')[0];
-            db.collection('users').doc(user.uid).set({
+            await db.collection('users').doc(user.uid).set({
               username: currentUsername,
               email: user.email,
               online: true,
@@ -1097,36 +1143,40 @@
             });
           }
           
-          // إضافة أزرار رفع الصور بعد تحميل المستخدم
+          // تحديث حالة الاتصال
+          await db.collection('users').doc(user.uid).update({ online: true });
+          
+          // إعداد الدردشة
+          loadPublicMessages();
+          loadOnlineUsers();
+          
+          // إضافة أزرار رفع الصور
           setTimeout(() => {
             addImageUploadButtons();
           }, 500);
-        });
-
-      db.collection('users').doc(user.uid).update({ online: true });
-
-      loadPublicMessages();
-      loadOnlineUsers();
-
-    } else if (user && !user.emailVerified) {
-      document.getElementById('auth').style.display = 'flex';
-      document.getElementById('chat').style.display = 'none';
-      verificationBox.classList.add('show');
-      startAutoVerificationCheck();
-    } else {
-      document.getElementById('auth').style.display = 'flex';
-      document.getElementById('chat').style.display = 'none';
-      privatePage.classList.remove('show');
-      verificationBox.classList.remove('show');
-      
-      if (verificationCheckInterval) {
-        clearInterval(verificationCheckInterval);
+          
+          // إظهار الدردشة وإخفاء التحميل
+          chatDiv.style.display = 'flex';
+          
+        } else {
+          // بريده غير مُفعّل
+          verificationBox.classList.add('show');
+          startAutoVerificationCheck();
+          // إظهار صفحة الدخول مع صندوق التحقق
+          authDiv.style.display = 'flex';
+        }
+      } else {
+        // لا يوجد مستخدم مسجل الدخول
+        // إظهار صفحة الدخول العادية
+        authDiv.style.display = 'flex';
       }
-      
-      if (unsubscribePublic) unsubscribePublic();
-      if (unsubscribePrivate) unsubscribePrivate();
-      if (unsubscribeOnline) unsubscribeOnline();
-      if (unsubscribePartner) unsubscribePartner();
+    } catch (error) {
+      console.error('خطأ في معالجة حالة المصادقة:', error);
+      // في حالة الخطأ، نعرض صفحة الدخول كحل آمن
+      authDiv.style.display = 'flex';
+    } finally {
+      // في النهاية، نخفي مؤشر التحميل
+      loader.classList.add('hidden');
     }
   });
 
@@ -1140,7 +1190,7 @@
         let html = '';
         snapshot.forEach(doc => {
           const data = doc.data();
-          if (doc.id !== currentUser.uid) {
+          if (doc.id !== currentUser?.uid) {
             html += `
               <div class="online-user" onclick="openPrivateChat('${doc.id}', '${escapeHtml(data.username)}')">
                 <span class="status"></span>
@@ -1410,7 +1460,7 @@
     
     const publicUploadBtn = document.createElement('button');
     publicUploadBtn.className = 'image-upload-btn';
-    publicUploadBtn.innerHTML = '📤';
+    publicUploadBtn.innerHTML = '📷';
     publicUploadBtn.type = 'button';
     publicUploadBtn.onclick = () => {
       currentImageMessageContext = 'public';
@@ -1425,7 +1475,7 @@
       
       const privateUploadBtn = document.createElement('button');
       privateUploadBtn.className = 'image-upload-btn';
-      privateUploadBtn.innerHTML = '📤';
+      privateUploadBtn.innerHTML = '📷';
       privateUploadBtn.type = 'button';
       privateUploadBtn.onclick = () => {
         if (!activePartner) {
@@ -1566,4 +1616,4 @@
   });
 </script>
 </body>
-      </html>
+  </html>
