@@ -10,7 +10,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
-    /* ... أنماطك السابقة تبقى كما هي ... */
     * {
       box-sizing: border-box;
       font-family: 'Segoe UI', Tahoma, sans-serif;
@@ -288,7 +287,7 @@
       margin-top: 5px;
     }
     
-    /* أنماط رفع الصور */
+    /* أنماط رفع الصور - المعدلة */
     .image-upload-container {
       position: relative;
       display: inline-block;
@@ -334,8 +333,9 @@
     
     .image-preview {
       max-width: 100%;
-      max-height: 200px;
+      max-height: 250px; /* زيادة حجم المعاينة */
       border-radius: 10px;
+      object-fit: contain;
     }
     
     .preview-actions {
@@ -364,20 +364,27 @@
       color: white;
     }
     
+    /* ===== التعديل الرئيسي هنا ===== */
     .image-message {
-      max-width: 100%;
+      max-width: 250px;      /* عرض مناسب للصورة في الرسالة */
+      max-height: 200px;     /* ارتفاع مناسب */
+      width: auto;           /* الحفاظ على النسبة */
+      height: auto;          /* الحفاظ على النسبة */
       border-radius: 10px;
       cursor: pointer;
       transition: 0.2s;
-      max-height: 200px;
-      object-fit: cover;
+      object-fit: contain;   /* منع تشويه الصورة */
       margin-top: 5px;
+      border: 2px solid rgba(255,255,255,0.1);
+      background-color: rgba(0,0,0,0.2); /* خلفية للصور الشفافة */
     }
     
     .image-message:hover {
       opacity: 0.9;
       transform: scale(1.02);
+      border-color: #9b59b6;
     }
+    /* ============================= */
     
     .full-image-modal {
       position: fixed;
@@ -400,6 +407,7 @@
       max-width: 90%;
       max-height: 90%;
       border-radius: 10px;
+      box-shadow: 0 0 30px rgba(255,255,255,0.2);
     }
     
     .close-modal {
@@ -414,6 +422,11 @@
       height: 50px;
       font-size: 24px;
       cursor: pointer;
+      z-index: 3001;
+    }
+    
+    .close-modal:hover {
+      background: #c0392b;
     }
     
     .upload-progress {
@@ -504,11 +517,11 @@
     }
     
     #auth {
-      display: none; /* مخفية افتراضياً، سيتم التحكم بها عبر JS */
+      display: none;
     }
     
     #chat {
-      display: none; /* مخفية افتراضياً */
+      display: none;
     }
     
     #auth input {
@@ -653,7 +666,7 @@
       100% { opacity: 1; }
     }
 
-    /* ===== أنماط مؤشر التحميل الجديدة ===== */
+    /* أنماط مؤشر التحميل */
     .loader-container {
       position: fixed;
       top: 0;
@@ -689,7 +702,7 @@
   </style>
 </head>
 <body>
-<!-- ===== مؤشر التحميل الجديد ===== -->
+<!-- مؤشر التحميل -->
 <div class="loader-container" id="loader">
   <div style="display: flex; flex-direction: column; align-items: center;">
     <div class="loader"></div>
@@ -787,7 +800,7 @@
   <div class="spinner"></div>
 </div>
 
-<div class="full-image-modal" id="fullImageModal" onclick="this.classList.remove('show')">
+<div class="full-image-modal" id="fullImageModal">
   <button class="close-modal" onclick="document.getElementById('fullImageModal').classList.remove('show')">✕</button>
   <img id="fullImage" src="" alt="">
 </div>
@@ -924,9 +937,6 @@
               db.collection('users').doc(auth.currentUser.uid).update({
                 emailVerified: true,
                 online: true
-              }).then(() => {
-                // بعد التحقق، سيتم تحديث حالة المصادقة تلقائياً وإعادة التوجيه
-                // لا حاجة لإعادة التحميل، onAuthStateChanged سيتولى ذلك
               });
             }
           })
@@ -949,8 +959,6 @@
           db.collection('users').doc(auth.currentUser.uid).update({
             emailVerified: true,
             online: true
-          }).then(() => {
-            // onAuthStateChanged سيتولى الباقي
           });
         } else {
           alert('❌ لم يتم التحقق من البريد بعد. الرجاء التحقق من بريدك الإلكتروني ثم الضغط مرة أخرى.');
@@ -1040,9 +1048,7 @@
           verificationBox.classList.add('show');
           startAutoVerificationCheck();
           alert('⚠️ لم يتم تفعيل بريدك الإلكتروني بعد. جاري التحقق التلقائي...');
-          auth.signOut(); // تسجيل الخروج حتى يتم التحقق
-        } else {
-          // المستخدم مُفعّل، سيتم تحديث onAuthStateChanged
+          auth.signOut();
         }
       })
       .catch(err => {
@@ -1068,7 +1074,7 @@
           online: true,
           emailVerified: true,
           lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }); // استخدام merge لتجنب الكتابة فوق البيانات
+        }, { merge: true });
       })
       .catch(err => {
         alert('❌ خطأ في تسجيل الدخول بحساب Google: ' + err.message);
@@ -1609,9 +1615,17 @@
       .replace(/'/g, "&#039;");
   }
 
+  // إغلاق نافذة المعاينة عند النقر خارجها
   document.addEventListener('click', (e) => {
     if (!onlinePanel.contains(e.target) && !e.target.classList.contains('online-btn')) {
       onlinePanel.classList.remove('show');
+    }
+  });
+
+  // إغلاق نافذة الصورة المكبرة عند النقر على الخلفية
+  document.getElementById('fullImageModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      this.classList.remove('show');
     }
   });
 </script>
